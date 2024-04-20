@@ -1,0 +1,2 @@
+# clog
+The Clues Logger!
