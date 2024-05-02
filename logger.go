@@ -2,26 +2,25 @@ package clog
 
 import (
 	"context"
-	"maps"
 	"os"
-	"path/filepath"
 	"sync"
 
-	"github.com/alcionai/clues"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-// Default location for writing log files.
-var userLogsDir = filepath.Join(os.Getenv("HOME"), "Library", "Logs")
-
-// Yes, we primarily hijack zap for our logging needs here.
-// This package isn't about writing a logger, it's about adding
-// an opinionated shell around the zap logger.
+// Yes, we just hijack zap for our logging needs here.
+// This package isn't about writing a logger, it's about
+// adding an opinionated shell around the zap logger.
 var (
-	loggerton *zap.SugaredLogger
-	singleMu  sync.Mutex
+	cloggerton *clogger
+	singleMu   sync.Mutex
 )
+
+type clogger struct {
+	zsl *zap.SugaredLogger
+	set Settings
+}
 
 // ---------------------------------------------------------------------------
 // constructors
@@ -118,20 +117,25 @@ func setLevel(cfg zap.Config, level logLevel) zap.Config {
 
 // singleton is the constructor and getter in one. Since we manage a global
 // singleton for each instance, we only ever want one alive at any given time.
-func singleton(set Settings) *zap.SugaredLogger {
+func singleton(set Settings) *clogger {
 	singleMu.Lock()
 	defer singleMu.Unlock()
 
-	if loggerton != nil {
-		return loggerton
+	if cloggerton != nil {
+		return cloggerton
 	}
 
 	set = set.EnsureDefaults()
 	setCluesSecretsHash(set.PIIHandling)
 
-	loggerton = genLogger(set)
+	zsl := genLogger(set)
 
-	return loggerton
+	cloggerton = &clogger{
+		zsl: zsl,
+		set: set,
+	}
+
+	return cloggerton
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -143,48 +147,32 @@ type loggingKey string
 const ctxKey loggingKey = "clog_logger"
 
 // Init embeds a logger within the context for later retrieval.
-// It is a suggested, but not necessary, initialization step.
+// It is a preferred, but not necessary, initialization step.
 func Init(ctx context.Context, set Settings) (context.Context, *zap.SugaredLogger) {
-	zsl := singleton(set)
-	zsl.Debugw("seeding logger", "logger_settings", set)
+	clogged := singleton(set)
+	clogged.zsl.Debugw("seeding logger", "logger_settings", set)
 
-	return embedIntoCtx(ctx, zsl), zsl
+	return plantLoggerInCtx(ctx, clogged), clogged.zsl
 }
 
 // Seed allows users to embed their own zap.SugaredLogger within the context.
 // It's good for inheriting a logger instance that was generated elsewhere, in case
-// you add a downstream package that wants to clog the code.
-func Seed(ctx context.Context, logger *zap.SugaredLogger) context.Context {
-	return embedIntoCtx(ctx, logger)
+// you have a downstream package that wants to clog the code with a different zsl.
+func Seed(ctx context.Context, seed *zap.SugaredLogger) context.Context {
+	return plantLoggerInCtx(ctx, &clogger{zsl: seed})
 }
 
-// CtxOrSeed attempts to retrieve the logger from the ctx.  If not found, it
-// generates a clogger with the given logger and settings, then it to the context.
-func CtxOrSeed(
-	ctx context.Context,
-	logger *zap.SugaredLogger,
-	set Settings,
-) (context.Context, *zap.SugaredLogger) {
-	l := ctx.Value(ctxKey)
-	if l == nil {
-		zsl := singleton(set)
-		return embedIntoCtx(ctx, zsl), zsl
-	}
-
-	return ctx, l.(*zap.SugaredLogger)
-}
-
-// embedIntoCtx allows users to embed their own zap.SugaredLogger within the
+// plantLoggerInCtx allows users to embed their own zap.SugaredLogger within the
 // context and with the given logger settings.
-func embedIntoCtx(
+func plantLoggerInCtx(
 	ctx context.Context,
-	logger *zap.SugaredLogger,
+	clogger *clogger,
 ) context.Context {
-	if logger == nil {
+	if clogger == nil {
 		return ctx
 	}
 
-	return context.WithValue(ctx, ctxKey, logger)
+	return context.WithValue(ctx, ctxKey, clogger)
 }
 
 // fromCtx pulls the clogger out of the context.  If no logger exists in the
@@ -202,109 +190,22 @@ func fromCtx(ctx context.Context) *zap.SugaredLogger {
 // Ctx retrieves the logger embedded in the context.
 // It also extracts any clues from the ctx and adds all k:v pairs to that log instance.
 // TODO: Defer the ctx extraction until the time of log.
-func Ctx(ctx context.Context) *zap.SugaredLogger {
-	return fromCtx(ctx).With(clues.In(ctx).Slice()...)
+func Ctx(ctx context.Context) *builder {
+	return newBuilder(ctx)
 }
 
-// CtxErr retrieves the logger embedded in the context
-// and packs all of the clues data from both the context and the error into it.
+// CtxErr is a shorthand for clog.Ctx(ctx).Err(err)
 // TODO: Defer the ctx extraction until the time of log.
-func CtxErr(ctx context.Context, err error) *zap.SugaredLogger {
-	ctxVals := clues.In(ctx).Map()
-	errVals := clues.InErr(err).Map()
+func CtxErr(ctx context.Context, err error) *builder {
+	nb := newBuilder(ctx)
+	nb.err = err
 
-	// error values should override context values.
-	maps.Copy(ctxVals, errVals)
-
-	zsl := fromCtx(ctx).
-		With("error", err).
-		With("error_labels", clues.Labels(err))
-
-	for k, v := range ctxVals {
-		zsl = zsl.With(k, v)
-	}
-
-	return zsl
+	return nb
 }
 
 // Flush writes out all buffered logs.
-// Probably good to do before shutting down whatever instance is using the singleton.
+// Probably good to do before shutting down whatever instance
+// had initialized the singleton.
 func Flush(ctx context.Context) {
-	_ = Ctx(ctx).Sync()
-}
-
-// ------------------------------------------------------------------------------------------------
-// log wrapper for downstream api compliance
-// ------------------------------------------------------------------------------------------------
-
-type wrapper struct {
-	zap.SugaredLogger
-	forceDebugLogLevel bool
-}
-
-func (w *wrapper) process(opts ...option) {
-	for _, opt := range opts {
-		opt(w)
-	}
-}
-
-type option func(*wrapper)
-
-// ForceDebugLogLevel reduces all logs emitted in the wrapper to
-// debug level, independent of their original log level.  Useful
-// for silencing noisy dependency packages without losing the info
-// altogether.
-func ForceDebugLogLevel() option {
-	return func(w *wrapper) {
-		w.forceDebugLogLevel = true
-	}
-}
-
-// Wrap returns the logger in the package with an extended api used for
-// dependency package interface compliance.
-func WrapCtx(ctx context.Context, opts ...option) *wrapper {
-	return Wrap(Ctx(ctx), opts...)
-}
-
-// Wrap returns the sugaredLogger with an extended api used for
-// dependency package interface compliance.
-func Wrap(zsl *zap.SugaredLogger, opts ...option) *wrapper {
-	w := &wrapper{SugaredLogger: *zsl}
-	w.process(opts...)
-
-	return w
-}
-
-func (w *wrapper) Logf(tmpl string, args ...any) {
-	if w.forceDebugLogLevel {
-		w.SugaredLogger.Debugf(tmpl, args...)
-		return
-	}
-
-	w.SugaredLogger.Infof(tmpl, args...)
-}
-
-func (w *wrapper) Errorf(tmpl string, args ...any) {
-	if w.forceDebugLogLevel {
-		w.SugaredLogger.Debugf(tmpl, args...)
-		return
-	}
-
-	w.SugaredLogger.Errorf(tmpl, args...)
-}
-
-// ------------------------------------------------------------------------------------------------
-// io.writer that writes values to the logger
-// ------------------------------------------------------------------------------------------------
-
-// Writer is a wrapper that turns the logger embedded in
-// the given ctx into an io.Writer.  All logs are currently
-// info-level.
-type Writer struct {
-	Ctx context.Context
-}
-
-func (w Writer) Write(p []byte) (int, error) {
-	Ctx(w.Ctx).Info(string(p))
-	return len(p), nil
+	_ = Ctx(ctx).zsl.Sync()
 }

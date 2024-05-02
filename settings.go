@@ -7,9 +7,57 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/alcionai/canario/src/internal/common/str"
 	"github.com/alcionai/clues"
 )
+
+// ---------------------------------------------------
+// consts
+// ---------------------------------------------------
+
+const clogFileEnv = "CLOG_FILE"
+
+type logLevel string
+
+const (
+	LLDebug    logLevel = "debug"
+	LLInfo     logLevel = "info"
+	LLError    logLevel = "error"
+	LLDisabled logLevel = "disabled"
+)
+
+type logFormat string
+
+const (
+	// use for cli/terminal
+	LFHuman logFormat = "human"
+	// use for cloud logging
+	LFJSON logFormat = "json"
+)
+
+type piiAlg string
+
+const (
+	PIIHash      piiAlg = "hash"
+	PIIMask      piiAlg = "mask"
+	PIIPlainText piiAlg = "plaintext"
+)
+
+const (
+	Stderr = "stderr"
+	Stdout = "stdout"
+)
+
+// ---------------------------------------------------
+// configuration
+// ---------------------------------------------------
+
+// Default location for writing log files.
+var userLogsDir = filepath.Join(os.Getenv("HOME"), "Library", "Logs")
+
+// a quick hack for a global singleton refrerencing what file is
+// used as the log file.  Is it safe to do this?  No, absolutely
+// not.  I'm aware of that, can fix it later.
+var ResolvedLogFile string
 
 // Settings records the user's preferred logging settings.
 type Settings struct {
@@ -20,6 +68,11 @@ type Settings struct {
 
 	// more fiddly bits
 	PIIHandling piiAlg // how to obscure pii
+	// when non-empty, only debuglogs with a label that matches
+	// the provided labels will get delivered.  All other debug
+	// logs get dropped.  Good way to expose a little bit of debug
+	// logs without flooding your system.
+	DebugMustHaveLabelLike []string
 }
 
 // EnsureDefaults sets any non-populated settings to their default value.
@@ -32,14 +85,14 @@ func (s Settings) EnsureDefaults() Settings {
 		set.Level = LLInfo
 	}
 
-	formats := []logFormat{LFText, LFJSON}
+	formats := []logFormat{LFHuman, LFJSON}
 	if len(set.Format) == 0 || !slices.Contains(formats, set.Format) {
-		set.Format = LFText
+		set.Format = LFHuman
 	}
 
 	algs := []piiAlg{PIIPlainText, PIIMask, PIIHash}
 	if len(set.PIIHandling) == 0 || !slices.Contains(algs, set.PIIHandling) {
-		set.PIIHandling = piiAlg(str.First(piiHandling, string(PIIPlainText)))
+		set.PIIHandling = PIIPlainText
 	}
 
 	if len(set.File) == 0 {
