@@ -34,16 +34,8 @@ func newBuilder(ctx context.Context) *builder {
 	}
 }
 
-type level string
-
-var (
-	lvlDebug level = "debug"
-	lvlInfo  level = "info"
-	lvlError level = "error"
-)
-
 // log actually delivers the log to the underlying logger with the given
-func (b builder) log(l level, msg string) {
+func (b builder) log(l logLevel, msg string) {
 	cv := clues.In(b.ctx).Map()
 	zsl := b.zsl
 
@@ -73,11 +65,11 @@ func (b builder) log(l level, msg string) {
 
 	// then write everything to the logger
 	switch l {
-	case lvlDebug:
+	case LLDebug:
 		zsl.Debug(msg)
-	case lvlInfo:
+	case LLInfo:
 		zsl.Info(msg)
-	case lvlError:
+	case LLError:
 		zsl.Error(msg)
 	}
 }
@@ -147,12 +139,12 @@ func (b *builder) With(vs ...any) *builder {
 // label to the log, as that will help your org maintain fine grained control
 // of debug-level log filtering.
 func (b builder) Debug(msg string) {
-	b.log(lvlDebug, msg)
+	b.log(LLDebug, msg)
 }
 
 // Info is your standard info log.  You know. For information.
 func (b builder) Info(msg string) {
-	b.log(lvlInfo, msg)
+	b.log(LLInfo, msg)
 }
 
 // Error is an error level log.  It doesn't require an error, because there's no
@@ -160,7 +152,7 @@ func (b builder) Info(msg string) {
 // add an error to your info or debug logs.  Log levels are just a fake labeling
 // system, anyway.
 func (b builder) Error(msg string) {
-	b.log(lvlError, msg)
+	b.log(LLError, msg)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -176,6 +168,6 @@ type Writer struct {
 
 // Write writes to the the Writer's clogger.
 func (w Writer) Write(p []byte) (int, error) {
-	Ctx(w.Ctx).log(lvlInfo, string(p))
+	Ctx(w.Ctx).log(LLInfo, string(p))
 	return len(p), nil
 }

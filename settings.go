@@ -72,7 +72,7 @@ type Settings struct {
 	// the provided labels will get delivered.  All other debug
 	// logs get dropped.  Good way to expose a little bit of debug
 	// logs without flooding your system.
-	DebugMustHaveLabelLike []string
+	OnlyLogDebugIfContainsLabel []string
 }
 
 // EnsureDefaults sets any non-populated settings to their default value.
