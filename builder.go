@@ -66,6 +66,19 @@ func (b builder) log(l logLevel, msg string) {
 	// then write everything to the logger
 	switch l {
 	case LLDebug:
+		var ok bool
+
+		for _, l := range cloggerton.set.OnlyLogDebugIfContainsLabel {
+			if _, match := b.labels[l]; match {
+				ok = true
+				break
+			}
+		}
+
+		if !ok {
+			return
+		}
+
 		zsl.Debug(msg)
 	case LLInfo:
 		zsl.Info(msg)
