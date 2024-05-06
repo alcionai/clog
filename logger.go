@@ -189,18 +189,26 @@ func fromCtx(ctx context.Context) *zap.SugaredLogger {
 
 // Ctx retrieves the logger embedded in the context.
 // It also extracts any clues from the ctx and adds all k:v pairs to that log instance.
-// TODO: Defer the ctx extraction until the time of log.
 func Ctx(ctx context.Context) *builder {
 	return newBuilder(ctx)
 }
 
 // CtxErr is a shorthand for clog.Ctx(ctx).Err(err)
-// TODO: Defer the ctx extraction until the time of log.
 func CtxErr(ctx context.Context, err error) *builder {
 	nb := newBuilder(ctx)
 	nb.err = err
 
 	return nb
+}
+
+// Singleton is a shorthand for .Ctx(context.Background()).  IE: it'll use the singleton
+// logger directly; building one if necessary.  You should avoid this and use .Ctx or
+// .CtxErr if possible.  Likelihood is that you're somewhere deep in a func chain that
+// doesn't accept a ctx, and you still want to add a quick log; maybe for debugging purposes.
+// That's fine!  Everything should work great.  Just don't kick off the logger with this
+// call, yeah?
+func Singleton() *builder {
+	return newBuilder(context.Background())
 }
 
 // Flush writes out all buffered logs.
