@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/alcionai/clues"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -148,17 +149,17 @@ const ctxKey loggingKey = "clog_logger"
 
 // Init embeds a logger within the context for later retrieval.
 // It is a preferred, but not necessary, initialization step.
-func Init(ctx context.Context, set Settings) (context.Context, *zap.SugaredLogger) {
+func Init(ctx context.Context, set Settings) context.Context {
 	clogged := singleton(set)
 	clogged.zsl.Debugw("seeding logger", "logger_settings", set)
 
-	return plantLoggerInCtx(ctx, clogged), clogged.zsl
+	return plantLoggerInCtx(ctx, clogged)
 }
 
-// Seed allows users to embed their own zap.SugaredLogger within the context.
+// PlantLogger allows users to embed their own zap.SugaredLogger within the context.
 // It's good for inheriting a logger instance that was generated elsewhere, in case
 // you have a downstream package that wants to clog the code with a different zsl.
-func Seed(ctx context.Context, seed *zap.SugaredLogger) context.Context {
+func PlantLogger(ctx context.Context, seed *zap.SugaredLogger) context.Context {
 	return plantLoggerInCtx(ctx, &clogger{zsl: seed})
 }
 
@@ -177,14 +178,14 @@ func plantLoggerInCtx(
 
 // fromCtx pulls the clogger out of the context.  If no logger exists in the
 // ctx, it returns the global singleton.
-func fromCtx(ctx context.Context) *zap.SugaredLogger {
+func fromCtx(ctx context.Context) *clogger {
 	l := ctx.Value(ctxKey)
 	// if l is still nil, we need to grab the global singleton or construct a singleton.
 	if l == nil {
 		l = singleton(Settings{}.EnsureDefaults())
 	}
 
-	return l.(*zap.SugaredLogger)
+	return l.(*clogger)
 }
 
 // Ctx retrieves the logger embedded in the context.
@@ -205,10 +206,20 @@ func CtxErr(ctx context.Context, err error) *builder {
 // logger directly; building one if necessary.  You should avoid this and use .Ctx or
 // .CtxErr if possible.  Likelihood is that you're somewhere deep in a func chain that
 // doesn't accept a ctx, and you still want to add a quick log; maybe for debugging purposes.
-// That's fine!  Everything should work great.  Just don't kick off the logger with this
-// call, yeah?
+//
+// That's fine!  Everything should work great.
+//
+// Unless you call this before initialization.  Then it'll panic.  We do want you to init
+// the logger first, else you'll potentially lose these logs due different buffers.
 func Singleton() *builder {
-	return newBuilder(context.Background())
+	if cloggerton == nil {
+		panic(clues.New("clog singleton requires prior initialization"))
+	}
+
+	return &builder{
+		ctx: context.Background(),
+		zsl: cloggerton.zsl,
+	}
 }
 
 // Flush writes out all buffered logs.
