@@ -26,11 +26,11 @@ type builder struct {
 }
 
 func newBuilder(ctx context.Context) *builder {
-	zsl := fromCtx(ctx)
+	clgr := fromCtx(ctx)
 
 	return &builder{
 		ctx: ctx,
-		zsl: zsl,
+		zsl: clgr.zsl,
 	}
 }
 
