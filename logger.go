@@ -149,6 +149,10 @@ const ctxKey loggingKey = "clog_logger"
 
 // Init embeds a logger within the context for later retrieval.
 // It is a preferred, but not necessary, initialization step.
+// If you don't call this and you start logging, or you call
+// Singleton(), then the package will initialize a logger instance
+// with the default values.  If you need to configure your logs,
+// make sure to embed this first.
 func Init(ctx context.Context, set Settings) context.Context {
 	clogged := singleton(set)
 	clogged.zsl.Debugw("seeding logger", "logger_settings", set)
