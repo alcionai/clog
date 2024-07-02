@@ -2,6 +2,7 @@ package clog
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/alcionai/clues"
 	"go.uber.org/zap"
@@ -65,7 +66,7 @@ func (b builder) log(l logLevel, msg string) {
 
 	// then write everything to the logger
 	switch l {
-	case LLDebug:
+	case LevelDebug:
 		var ok bool
 
 		for _, l := range cloggerton.set.OnlyLogDebugIfContainsLabel {
@@ -80,9 +81,9 @@ func (b builder) log(l logLevel, msg string) {
 		}
 
 		zsl.Debug(msg)
-	case LLInfo:
+	case LevelInfo:
 		zsl.Info(msg)
-	case LLError:
+	case LevelError:
 		zsl.Error(msg)
 	}
 }
@@ -152,12 +153,44 @@ func (b *builder) With(vs ...any) *builder {
 // label to the log, as that will help your org maintain fine grained control
 // of debug-level log filtering.
 func (b builder) Debug(msg string) {
-	b.log(LLDebug, msg)
+	b.log(LevelDebug, msg)
+}
+
+// Debugf level logging.  Whenever possible, you should add a debug category
+// label to the log, as that will help your org maintain fine grained control
+// of debug-level log filtering.
+// f is for format.
+// f is also for "Why?  Why are you using this?  Use Debugw instead, it's much better".
+func (b builder) Debugf(tmpl string, vs ...any) {
+	b.log(LevelDebug, fmt.Sprintf(tmpl, vs...))
+}
+
+// Debugw level logging.  Whenever possible, you should add a debug category
+// label to the log, as that will help your org maintain fine grained control
+// of debug-level log filtering.
+// w is for With(key:values).  log.Debugw("msg", foo, bar) is the same as
+// log.With(foo, bar).Debug("msg").
+func (b builder) Debugw(msg string, keyValues ...any) {
+	b.With(keyValues...).log(LevelDebug, msg)
 }
 
 // Info is your standard info log.  You know. For information.
 func (b builder) Info(msg string) {
-	b.log(LLInfo, msg)
+	b.log(LevelInfo, msg)
+}
+
+// Infof is your standard info log.  You know. For information.
+// f is for format.
+// f is also for "Don't make bloated log messages, kids.  Use Infow instead.".
+func (b builder) Infof(tmpl string, vs ...any) {
+	b.log(LevelInfo, fmt.Sprintf(tmpl, vs...))
+}
+
+// Infow is your standard info log.  You know. For information.
+// w is for With(key:values).  log.Infow("msg", foo, bar) is the same as
+// log.With(foo, bar).Info("msg").
+func (b builder) Infow(msg string, keyValues ...any) {
+	b.With(keyValues...).log(LevelInfo, msg)
 }
 
 // Error is an error level log.  It doesn't require an error, because there's no
@@ -165,7 +198,27 @@ func (b builder) Info(msg string) {
 // add an error to your info or debug logs.  Log levels are just a fake labeling
 // system, anyway.
 func (b builder) Error(msg string) {
-	b.log(LLError, msg)
+	b.log(LevelError, msg)
+}
+
+// Error is an error level log.  It doesn't require an error, because there's no
+// rule about needing an error to log at error level.  Or the reverse; feel free to
+// add an error to your info or debug logs.  Log levels are just a fake labeling
+// system, anyway.
+// f is for format.
+// f is also for "Good developers know the value of using Errorw before Errorf."
+func (b builder) Errorf(tmpl string, vs ...any) {
+	b.log(LevelError, fmt.Sprintf(tmpl, vs...))
+}
+
+// Error is an error level log.  It doesn't require an error, because there's no
+// rule about needing an error to log at error level.  Or the reverse; feel free to
+// add an error to your info or debug logs.  Log levels are just a fake labeling
+// system, anyway.
+// w is for With(key:values).  log.Errorw("msg", foo, bar) is the same as
+// log.With(foo, bar).Error("msg").
+func (b builder) Errorw(msg string, keyValues ...any) {
+	b.With(keyValues...).log(LevelError, msg)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -181,6 +234,6 @@ type Writer struct {
 
 // Write writes to the the Writer's clogger.
 func (w Writer) Write(p []byte) (int, error) {
-	Ctx(w.Ctx).log(LLInfo, string(p))
+	Ctx(w.Ctx).log(LevelInfo, string(p))
 	return len(p), nil
 }

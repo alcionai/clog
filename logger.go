@@ -31,7 +31,7 @@ func genLogger(set Settings) *zap.SugaredLogger {
 	// when testing, ensure debug logging matches the test.v setting
 	for _, arg := range os.Args {
 		if arg == `--test.v=true` {
-			set.Level = LLDebug
+			set.Level = LevelDebug
 		}
 	}
 
@@ -47,7 +47,7 @@ func genLogger(set Settings) *zap.SugaredLogger {
 
 	switch set.Format {
 	// JSON means each row should appear as a single json object.
-	case LFJSON:
+	case FormatToJSON:
 		zcfg = setLevel(zap.NewProductionConfig(), set.Level)
 		zcfg.OutputPaths = []string{set.File}
 		// by default we'll use the columnar non-json format, which uses tab
@@ -80,11 +80,11 @@ func genLogger(set Settings) *zap.SugaredLogger {
 func zapcoreFallback(set Settings) *zap.Logger {
 	levelFilter := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 		switch set.Level {
-		case LLInfo:
+		case LevelInfo:
 			return lvl >= zapcore.InfoLevel
-		case LLError:
+		case LevelError:
 			return lvl >= zapcore.ErrorLevel
-		case LLDisabled:
+		case LevelDisabled:
 			return false
 		default:
 			// default to debug
@@ -105,11 +105,11 @@ func zapcoreFallback(set Settings) *zap.Logger {
 // converts a given logLevel into the zapcore level enum.
 func setLevel(cfg zap.Config, level logLevel) zap.Config {
 	switch level {
-	case LLInfo:
+	case LevelInfo:
 		cfg.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
-	case LLError:
+	case LevelError:
 		cfg.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
-	case LLDisabled:
+	case LevelDisabled:
 		cfg.Level = zap.NewAtomicLevelAt(zapcore.FatalLevel)
 	}
 
@@ -127,7 +127,7 @@ func singleton(set Settings) *clogger {
 	}
 
 	set = set.EnsureDefaults()
-	setCluesSecretsHash(set.PIIHandling)
+	setCluesSecretsHash(set.SensitiveInfoHandling)
 
 	zsl := genLogger(set)
 

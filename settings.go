@@ -19,27 +19,27 @@ const clogFileEnv = "CLOG_FILE"
 type logLevel string
 
 const (
-	LLDebug    logLevel = "debug"
-	LLInfo     logLevel = "info"
-	LLError    logLevel = "error"
-	LLDisabled logLevel = "disabled"
+	LevelDebug    logLevel = "debug"
+	LevelInfo     logLevel = "info"
+	LevelError    logLevel = "error"
+	LevelDisabled logLevel = "disabled"
 )
 
 type logFormat string
 
 const (
 	// use for cli/terminal
-	LFHuman logFormat = "human"
+	FormatForHumans logFormat = "human"
 	// use for cloud logging
-	LFJSON logFormat = "json"
+	FormatToJSON logFormat = "json"
 )
 
-type piiAlg string
+type sensitiveInfoHandlingAlgo string
 
 const (
-	PIIHash      piiAlg = "hash"
-	PIIMask      piiAlg = "mask"
-	PIIPlainText piiAlg = "plaintext"
+	HashSensitiveInfo            sensitiveInfoHandlingAlgo = "hash"
+	MaskSensitiveInfo            sensitiveInfoHandlingAlgo = "mask"
+	ShowSensitiveInfoInPlainText sensitiveInfoHandlingAlgo = "plaintext"
 )
 
 const (
@@ -52,7 +52,7 @@ const (
 // ---------------------------------------------------
 
 // Default location for writing log files.
-var userLogsDir = filepath.Join(os.Getenv("HOME"), "Library", "Logs")
+var defaultLogFileDir = filepath.Join(os.Getenv("HOME"), "Library", "Logs")
 
 // a quick hack for a global singleton refrerencing what file is
 // used as the log file.  Is it safe to do this?  No, absolutely
@@ -67,7 +67,7 @@ type Settings struct {
 	Level  logLevel  // what level to log at
 
 	// more fiddly bits
-	PIIHandling piiAlg // how to obscure pii
+	SensitiveInfoHandling sensitiveInfoHandlingAlgo // how to obscure pii
 	// when non-empty, only debuglogs with a label that matches
 	// the provided labels will get delivered.  All other debug
 	// logs get dropped.  Good way to expose a little bit of debug
@@ -80,23 +80,23 @@ type Settings struct {
 func (s Settings) EnsureDefaults() Settings {
 	set := s
 
-	levels := []logLevel{LLDisabled, LLDebug, LLInfo, LLError}
+	levels := []logLevel{LevelDisabled, LevelDebug, LevelInfo, LevelError}
 	if len(set.Level) == 0 || !slices.Contains(levels, set.Level) {
-		set.Level = LLInfo
+		set.Level = LevelInfo
 	}
 
-	formats := []logFormat{LFHuman, LFJSON}
+	formats := []logFormat{FormatForHumans, FormatToJSON}
 	if len(set.Format) == 0 || !slices.Contains(formats, set.Format) {
-		set.Format = LFHuman
+		set.Format = FormatForHumans
 	}
 
-	algs := []piiAlg{PIIPlainText, PIIMask, PIIHash}
-	if len(set.PIIHandling) == 0 || !slices.Contains(algs, set.PIIHandling) {
-		set.PIIHandling = PIIPlainText
+	algs := []sensitiveInfoHandlingAlgo{ShowSensitiveInfoInPlainText, MaskSensitiveInfo, HashSensitiveInfo}
+	if len(set.SensitiveInfoHandling) == 0 || !slices.Contains(algs, set.SensitiveInfoHandling) {
+		set.SensitiveInfoHandling = ShowSensitiveInfoInPlainText
 	}
 
 	if len(set.File) == 0 {
-		set.File = GetLogFile("")
+		set.File = GetLogFileLocationFromOS()
 		ResolvedLogFile = set.File
 	}
 
@@ -106,14 +106,14 @@ func (s Settings) EnsureDefaults() Settings {
 // Returns the default location for log file storage.
 func defaultLogLocation() string {
 	return filepath.Join(
-		userLogsDir,
+		defaultLogFileDir,
 		"clog",
 		time.Now().UTC().Format("2006-01-02T15-04-05Z")+".log")
 }
 
-// GetLogFile finds the log file in the users local system.
+// GetLogFileLocationFromOS finds the log file in the users local system.
 // Uses the env var declaration, if populated, else defaults to stderr.
-func GetLogFile(logFileFlagVal string) string {
+func GetLogFileLocationFromOS() string {
 	if len(ResolvedLogFile) > 0 {
 		return ResolvedLogFile
 	}
@@ -143,13 +143,13 @@ func GetLogFile(logFileFlagVal string) string {
 	return r
 }
 
-func setCluesSecretsHash(alg piiAlg) {
+func setCluesSecretsHash(alg sensitiveInfoHandlingAlgo) {
 	switch alg {
-	case PIIHash:
+	case HashSensitiveInfo:
 		clues.SetHasher(clues.DefaultHash())
-	case PIIMask:
+	case MaskSensitiveInfo:
 		clues.SetHasher(clues.HashCfg{HashAlg: clues.Flatmask})
-	case PIIPlainText:
+	case ShowSensitiveInfoInPlainText:
 		clues.SetHasher(clues.NoHash())
 	}
 }
