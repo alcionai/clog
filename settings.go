@@ -96,7 +96,7 @@ func (s Settings) EnsureDefaults() Settings {
 	}
 
 	if len(set.File) == 0 {
-		set.File = GetLogFileLocationFromOS()
+		set.File = GetLogFileOrDefault("")
 		ResolvedLogFile = set.File
 	}
 
@@ -111,9 +111,11 @@ func defaultLogLocation() string {
 		time.Now().UTC().Format("2006-01-02T15-04-05Z")+".log")
 }
 
-// GetLogFileLocationFromOS finds the log file in the users local system.
+// GetLogFileOrDefault finds the log file in the users local system.
 // Uses the env var declaration, if populated, else defaults to stderr.
-func GetLogFileLocationFromOS() string {
+// If this has already been called once before, uses the result of that
+// prior call.
+func GetLogFileOrDefault(useThisFile string) string {
 	if len(ResolvedLogFile) > 0 {
 		return ResolvedLogFile
 	}
@@ -123,6 +125,10 @@ func GetLogFileLocationFromOS() string {
 	// if no env var is specified, fall back to the default file location.
 	if len(r) == 0 {
 		r = defaultLogLocation()
+	}
+
+	if len(useThisFile) > 0 {
+		r = useThisFile
 	}
 
 	// direct to Stdout if provided '-'.
