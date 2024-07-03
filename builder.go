@@ -152,8 +152,8 @@ func (b *builder) With(vs ...any) *builder {
 // Debug level logging.  Whenever possible, you should add a debug category
 // label to the log, as that will help your org maintain fine grained control
 // of debug-level log filtering.
-func (b builder) Debug(msg string) {
-	b.log(LevelDebug, msg)
+func (b builder) Debug(msgArgs ...any) {
+	b.log(LevelDebug, fmt.Sprint(msgArgs...))
 }
 
 // Debugf level logging.  Whenever possible, you should add a debug category
@@ -175,8 +175,8 @@ func (b builder) Debugw(msg string, keyValues ...any) {
 }
 
 // Info is your standard info log.  You know. For information.
-func (b builder) Info(msg string) {
-	b.log(LevelInfo, msg)
+func (b builder) Info(msgArgs ...any) {
+	b.log(LevelInfo, fmt.Sprint(msgArgs...))
 }
 
 // Infof is your standard info log.  You know. For information.
@@ -197,8 +197,8 @@ func (b builder) Infow(msg string, keyValues ...any) {
 // rule about needing an error to log at error level.  Or the reverse; feel free to
 // add an error to your info or debug logs.  Log levels are just a fake labeling
 // system, anyway.
-func (b builder) Error(msg string) {
-	b.log(LevelError, msg)
+func (b builder) Error(msgArgs ...any) {
+	b.log(LevelError, fmt.Sprint(msgArgs...))
 }
 
 // Error is an error level log.  It doesn't require an error, because there's no
