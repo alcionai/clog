@@ -3,7 +3,7 @@ package clog_test
 import (
 	"testing"
 
-	"github.com/ryanfkeepers/clog"
+	"github.com/alcionai/clog"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

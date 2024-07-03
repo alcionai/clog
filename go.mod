@@ -1,4 +1,4 @@
-module github.com/ryanfkeepers/clog
+module github.com/alcionai/clog
 
 go 1.22.1
 
