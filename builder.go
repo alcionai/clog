@@ -30,8 +30,11 @@ func newBuilder(ctx context.Context) *builder {
 	clgr := fromCtx(ctx)
 
 	return &builder{
-		ctx: ctx,
-		zsl: clgr.zsl,
+		ctx:      ctx,
+		zsl:      clgr.zsl,
+		with:     map[any]any{},
+		labels:   map[string]struct{}{},
+		comments: map[string]struct{}{},
 	}
 }
 
