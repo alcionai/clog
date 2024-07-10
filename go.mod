@@ -1,6 +1,6 @@
 module github.com/alcionai/clog
 
-go 1.22.1
+go 1.22
 
 require (
 	github.com/alcionai/clues v0.0.0-20240322175840-bbc6bfe86470
