@@ -42,7 +42,10 @@ func genLogger(set Settings) *zap.SugaredLogger {
 		zlog *zap.Logger
 		zcfg zap.Config
 		// by default only add stacktraces to panics, else it gets too noisy.
-		zopts = []zap.Option{zap.AddStacktrace(zapcore.PanicLevel)}
+		zopts = []zap.Option{
+			zap.AddStacktrace(zapcore.PanicLevel),
+			zap.AddCallerSkip(2),
+		}
 	)
 
 	switch set.Format {
