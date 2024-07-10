@@ -93,3 +93,48 @@ func (suite *BuilderUnitSuite) testErrorLogs(bld *builder) {
 	bld.Errorw("a log", "with key")
 	bld.Errorw("a log", "with key", "and value")
 }
+
+func (suite *BuilderUnitSuite) TestGetValue() {
+	table := []struct {
+		name     string
+		value    any
+		expected any
+	}{
+		{
+			name:     "integer",
+			value:    1,
+			expected: 1,
+		},
+		{
+			name:     "string",
+			value:    "foo",
+			expected: "foo",
+		},
+		{
+			name: "pointer to string",
+			value: func() *string {
+				s := "foo"
+				return &s
+			}(),
+			expected: "foo",
+		},
+		{
+			name:     "nil",
+			value:    nil,
+			expected: nil,
+		},
+		{
+			name: "nil pointer",
+			value: func() *string {
+				return nil
+			}(),
+			expected: nil,
+		},
+	}
+
+	for _, tt := range table {
+		suite.T().Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, getValue(tt.value))
+		})
+	}
+}
