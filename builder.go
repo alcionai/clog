@@ -3,6 +3,7 @@ package clog
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/alcionai/clues"
 	"go.uber.org/zap"
@@ -129,6 +130,20 @@ func (b *builder) Comment(cmnt string) *builder {
 	return b
 }
 
+// getValue will return the value if not pointer, or the dereferenced
+// value if it is a pointer.
+func getValue(v any) any {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() == reflect.Ptr {
+		if rv.IsNil() {
+			return nil
+		}
+
+		return rv.Elem().Interface()
+	}
+	return v
+}
+
 // With is your standard "With" func.  Add data in K:V pairs here to have them
 // added to the log message metadata.  Ex: builder.With("foo", "bar") will add
 // "foo": "bar" to the resulting log structure.  An uneven number of pairs will
@@ -146,7 +161,7 @@ func (b *builder) With(vs ...any) *builder {
 			v = vs[i+1]
 		}
 
-		b.with[k] = v
+		b.with[k] = getValue(v)
 	}
 
 	return b
