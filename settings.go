@@ -14,7 +14,7 @@ import (
 // consts
 // ---------------------------------------------------
 
-const clogFileEnv = "CLOG_FILE"
+const clogLogFileEnv = "CLOG_LOG_FILE"
 
 type logLevel string
 
@@ -54,9 +54,14 @@ const (
 // Default location for writing log files.
 var defaultLogFileDir = filepath.Join(os.Getenv("HOME"), "Library", "Logs")
 
-// a quick hack for a global singleton refrerencing what file is
-// used as the log file.  Is it safe to do this?  No, absolutely
-// not.  I'm aware of that, can fix it later.
+// ResolvedLogFile is the first log file established by the caller.
+// It gets eagerly populated on the first act of ensuring settings
+// defaults, which normally occurs during the Init call.
+//
+// If Init gets called more than once, or different settings are
+// ensured, it's possible to override this value by manually specifying
+// the log file in the settings used for that action.  But if no file
+// is provided, the default will fall back to this resolved file first.
 var ResolvedLogFile string
 
 // Settings records the user's preferred logging settings.
@@ -97,6 +102,9 @@ func (s Settings) EnsureDefaults() Settings {
 
 	if len(set.File) == 0 {
 		set.File = GetLogFileOrDefault("")
+	}
+
+	if len(ResolvedLogFile) == 0 {
 		ResolvedLogFile = set.File
 	}
 
@@ -120,15 +128,18 @@ func GetLogFileOrDefault(useThisFile string) string {
 		return ResolvedLogFile
 	}
 
-	r := os.Getenv(clogFileEnv)
+	// start by preferring the file given to us by the caller.
+	r := useThisFile
 
-	// if no env var is specified, fall back to the default file location.
+	// if no file was provided, look for a configured location using
+	// the default ENV.
 	if len(r) == 0 {
-		r = defaultLogLocation()
+		r = os.Getenv(clogLogFileEnv)
 	}
 
-	if len(useThisFile) > 0 {
-		r = useThisFile
+	// if no file was provided, fall back to the default file location.
+	if len(r) == 0 {
+		r = defaultLogLocation()
 	}
 
 	// direct to Stdout if provided '-'.
