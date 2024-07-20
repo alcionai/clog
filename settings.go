@@ -131,7 +131,8 @@ func GetLogFileOrDefault(useThisFile string) string {
 	// start by preferring the file given to us by the caller.
 	r := useThisFile
 
-	// if no file was provided, look for the default ENVj.
+	// if no file was provided, look for a configured location using
+	// the default ENV.
 	if len(r) == 0 {
 		r = os.Getenv(clogLogFileEnv)
 	}
