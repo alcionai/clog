@@ -115,6 +115,10 @@ func (b *builder) Err(err error) *builder {
 // overwhelming number of debug logs that we all know you produce, you
 // little overlogger, you.
 func (b *builder) Label(ls ...string) *builder {
+	if len(b.labels) == 0 {
+		b.labels = map[string]struct{}{}
+	}
+
 	for _, l := range ls {
 		b.labels[l] = struct{}{}
 	}
@@ -126,7 +130,12 @@ func (b *builder) Label(ls ...string) *builder {
 // the code to find the comment about this log case?  Add them into the log
 // itself!
 func (b *builder) Comment(cmnt string) *builder {
+	if len(b.comments) == 0 {
+		b.comments = map[string]struct{}{}
+	}
+
 	b.comments[cmnt] = struct{}{}
+
 	return b
 }
 
@@ -151,6 +160,10 @@ func getValue(v any) any {
 func (b *builder) With(vs ...any) *builder {
 	if len(vs) == 0 {
 		return b
+	}
+
+	if len(b.with) == 0 {
+		b.with = map[any]any{}
 	}
 
 	for i := 0; i < len(vs); i += 2 {
