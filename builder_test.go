@@ -18,59 +18,97 @@ func TestBuilderUnitSuite(t *testing.T) {
 }
 
 func (suite *BuilderUnitSuite) TestBuilder() {
-	var (
-		t   = suite.T()
-		ctx = Init(
-			context.Background(),
-			Settings{}.EnsureDefaults())
-		bld = Ctx(ctx)
-	)
+	table := []struct {
+		name string
+		init func(ctx context.Context) context.Context
+		bldr func(ctx context.Context) *builder
+	}{
+		{
+			name: "standard",
+			init: func(ctx context.Context) context.Context {
+				return Init(
+					ctx,
+					Settings{}.EnsureDefaults())
+			},
+			bldr: func(ctx context.Context) *builder {
+				return Ctx(ctx)
+			},
+		},
+		{
+			name: "singleton",
+			init: func(ctx context.Context) context.Context {
+				return Init(
+					ctx,
+					Settings{}.EnsureDefaults())
+			},
+			bldr: func(ctx context.Context) *builder {
+				return Singleton()
+			},
+		},
+		{
+			name: "singleton, no prior init",
+			init: func(ctx context.Context) context.Context {
+				return ctx
+			},
+			bldr: func(ctx context.Context) *builder {
+				return Singleton()
+			},
+		},
+	}
 
-	// standard builder checks
-	bld.With("foo", "bar", "baz", 1)
-	assert.Contains(t, bld.with, "foo")
-	assert.Equal(t, bld.with["foo"].(string), "bar")
-	assert.Contains(t, bld.with, "baz")
-	assert.Equal(t, bld.with["baz"].(int), 1)
+	for _, test := range table {
+		var (
+			t   = suite.T()
+			ctx = test.init(context.Background())
+			bld = test.bldr(ctx)
+		)
 
-	bld.Label("l1", "l2", "l1")
-	assert.Contains(t, bld.labels, "l1")
-	assert.Contains(t, bld.labels, "l2")
+		// standard builder checks
+		bld.With("foo", "bar", "baz", 1)
+		assert.Contains(t, bld.with, "foo")
+		assert.Equal(t, bld.with["foo"].(string), "bar")
+		assert.Contains(t, bld.with, "baz")
+		assert.Equal(t, bld.with["baz"].(int), 1)
 
-	bld.Comment("a comment")
-	bld.Comment("another comment")
-	bld.Comment("a comment")
-	assert.Contains(t, bld.comments, "a comment")
-	assert.Contains(t, bld.comments, "another comment")
+		bld.Label("l1", "l2", "l1")
+		assert.Contains(t, bld.labels, "l1")
+		assert.Contains(t, bld.labels, "l2")
 
-	// ensure no collision between separate builders
-	// using the same ctx.
-	err := clues.New("an error").
-		With("fnords", "i have seen them").
-		Label("errLabel")
+		bld.Comment("a comment")
+		bld.Comment("another comment")
+		bld.Comment("a comment")
+		assert.Contains(t, bld.comments, "a comment")
+		assert.Contains(t, bld.comments, "another comment")
 
-	other := CtxErr(ctx, err)
-	assert.Empty(t, other.with)
-	assert.Empty(t, other.labels)
-	assert.Empty(t, other.comments)
-	assert.ErrorIs(t, other.err, err, clues.ToCore(err))
+		// ensure no collision between separate builders
+		// using the same ctx.
+		err := clues.New("an error").
+			With("fnords", "i have seen them").
+			Label("errLabel")
 
-	other.With("foo", "smarf")
-	assert.Contains(t, other.with, "foo")
-	assert.Equal(t, bld.with["foo"].(string), "bar")
+		other := CtxErr(ctx, err)
+		assert.Empty(t, other.with)
+		assert.Empty(t, other.labels)
+		assert.Empty(t, other.comments)
+		assert.ErrorIs(t, other.err, err, clues.ToCore(err))
 
-	other.Label("l3")
-	assert.Contains(t, other.labels, "l3")
-	assert.NotContains(t, bld.labels, "l3")
+		other.With("foo", "smarf")
+		assert.Contains(t, other.with, "foo")
+		assert.Equal(t, bld.with["foo"].(string), "bar")
 
-	other.Comment("comment a")
-	assert.Contains(t, other.comments, "comment a")
-	assert.NotContains(t, bld.comments, "comment a")
+		other.Label("l3")
+		assert.Contains(t, other.labels, "l3")
+		assert.NotContains(t, bld.labels, "l3")
 
-	// ensure no panics when logging
-	suite.testDebugLogs(bld)
-	suite.testInfoLogs(bld)
-	suite.testErrorLogs(bld)
+		other.Comment("comment a")
+		assert.Contains(t, other.comments, "comment a")
+		assert.NotContains(t, bld.comments, "comment a")
+
+		// ensure no panics when logging
+		suite.testDebugLogs(bld)
+		suite.testInfoLogs(bld)
+		suite.testErrorLogs(bld)
+	}
 }
 
 func (suite *BuilderUnitSuite) testDebugLogs(bld *builder) {
