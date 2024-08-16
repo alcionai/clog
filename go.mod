@@ -3,7 +3,7 @@ module github.com/alcionai/clog
 go 1.22
 
 require (
-	github.com/alcionai/clues v0.0.0-20240322175840-bbc6bfe86470
+	github.com/alcionai/clues v0.0.0-20240816163112-c6ef710c56fd
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
