@@ -1,5 +1,7 @@
 github.com/alcionai/clues v0.0.0-20240322175840-bbc6bfe86470 h1:O43sCKt0GimOySnGefOSjXFBepUcy1tbvFQ7OjI57N8=
 github.com/alcionai/clues v0.0.0-20240322175840-bbc6bfe86470/go.mod h1:fmLBqOSiUEbXcKSFbxIlbmNqZxtdq+uhN5LXJkv/yJ8=
+github.com/alcionai/clues v0.0.0-20240816163112-c6ef710c56fd h1:DKwlcB7Gjr7UpcZCXjlaJxd5CwyHgshC2ijZgkdUcDs=
+github.com/alcionai/clues v0.0.0-20240816163112-c6ef710c56fd/go.mod h1:fmLBqOSiUEbXcKSFbxIlbmNqZxtdq+uhN5LXJkv/yJ8=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
