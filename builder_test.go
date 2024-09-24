@@ -80,6 +80,8 @@ func (suite *BuilderUnitSuite) TestBuilder() {
 		assert.Contains(t, bld.comments, "a comment")
 		assert.Contains(t, bld.comments, "another comment")
 
+		bld.SkipCaller(1)
+
 		// ensure no collision between separate builders
 		// using the same ctx.
 		err := clues.New("an error").
@@ -116,6 +118,10 @@ func (suite *BuilderUnitSuite) testDebugLogs(bld *builder) {
 	bld.Debugf("a %s", "log")
 	bld.Debugw("a log", "with key")
 	bld.Debugw("a log", "with key", "and value")
+	// negative skip caller, just to ensure safety
+	bld.
+		SkipCaller(-1).
+		Debugw("a log", "with key", "and value")
 }
 
 func (suite *BuilderUnitSuite) testInfoLogs(bld *builder) {
@@ -123,6 +129,10 @@ func (suite *BuilderUnitSuite) testInfoLogs(bld *builder) {
 	bld.Infof("a %s", "log")
 	bld.Infow("a log", "with key")
 	bld.Infow("a log", "with key", "and value")
+	// negative skip caller, just to ensure safety
+	bld.
+		SkipCaller(-1).
+		Infow("a log", "with key", "and value")
 }
 
 func (suite *BuilderUnitSuite) testErrorLogs(bld *builder) {
@@ -130,6 +140,10 @@ func (suite *BuilderUnitSuite) testErrorLogs(bld *builder) {
 	bld.Errorf("a %s", "log")
 	bld.Errorw("a log", "with key")
 	bld.Errorw("a log", "with key", "and value")
+	// negative skip caller, just to ensure safety
+	bld.
+		SkipCaller(-1).
+		Errorw("a log", "with key", "and value")
 }
 
 func (suite *BuilderUnitSuite) TestGetValue() {
