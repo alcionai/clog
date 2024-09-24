@@ -19,12 +19,13 @@ import (
 // ------------------------------------------------------------------------------------------------
 
 type builder struct {
-	ctx      context.Context
-	err      error
-	zsl      *zap.SugaredLogger
-	with     map[any]any
-	labels   map[string]struct{}
-	comments map[string]struct{}
+	ctx             context.Context
+	err             error
+	zsl             *zap.SugaredLogger
+	with            map[any]any
+	labels          map[string]struct{}
+	comments        map[string]struct{}
+	skipCallerJumps int
 }
 
 func newBuilder(ctx context.Context) *builder {
@@ -54,7 +55,6 @@ func (b builder) log(l logLevel, msg string) {
 			With("error_labels", clues.Labels(b.err))
 	}
 
-	// pack in all clues and error values
 	for k, v := range cv {
 		zsl = zsl.With(k, v)
 	}
@@ -67,6 +67,10 @@ func (b builder) log(l logLevel, msg string) {
 	// finally, make sure we attach the labels and comments
 	zsl = zsl.With("clog_labels", maps.Keys(b.labels))
 	zsl = zsl.With("clog_comments", maps.Keys(b.comments))
+
+	if b.skipCallerJumps > 0 {
+		zsl = zsl.WithOptions(zap.AddCallerSkip(b.skipCallerJumps))
+	}
 
 	// then write everything to the logger
 	switch l {
@@ -136,6 +140,16 @@ func (b *builder) Comment(cmnt string) *builder {
 
 	b.comments[cmnt] = struct{}{}
 
+	return b
+}
+
+// SkipCaller allows the logger to set its stackTrace N levels back from the
+// current call.  This is great for helper functions that handle log actions
+// which get used by many different consumers, as it will always report the
+// log line as the call to the helper function, instead of the line within the
+// helper func.
+func (b *builder) SkipCaller(nSkips int) *builder {
+	b.skipCallerJumps = nSkips
 	return b
 }
 
