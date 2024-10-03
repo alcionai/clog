@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/alcionai/clues"
 	"go.uber.org/zap"
@@ -58,7 +59,7 @@ func genLogger(set Settings) *zap.SugaredLogger {
 	default:
 		zcfg = setLevel(zap.NewDevelopmentConfig(), set.Level)
 
-		zcfg.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("15:04:05.00")
+		zcfg.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout(time.StampMilli)
 
 		// when printing to stdout/stderr, colorize things!
 		if set.File == Stderr || set.File == Stdout {
